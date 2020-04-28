@@ -5,6 +5,7 @@
                   play
                   rs-frames
                   rs-read/clip)
+         racket/draw
          framework
          racket/class
          racket/match)
@@ -154,6 +155,8 @@
                "smaller pieces (e.g., using (clip ...))."))]))
 
     (define/override (on-event evt)
+      (define evt-type (send evt get-event-type))
+      (println (send evt get-event-type))
       (set! cur-mouse-x (send evt get-x))
       (define client-width (get-client-width))
       (define-values (view-start-x _1) (get-view-start))
@@ -179,11 +182,16 @@
       (define frame-num-str
         (cond [(< scaled-x len) scaled-x]
               [else "undefined"]))
-      (send frame-num-text begin-edit-sequence #f)
-      (send frame-num-text erase)
-      (send frame-num-text insert
-            (format "frame #: ~a" frame-num-str))
-      (send frame-num-text end-edit-sequence)
+      (match evt-type
+        ['left-down (send s-message set-label (format "Start: ~a" cur-mouse-x))]
+        ['left-up (send e-message set-label (format "End: ~a" cur-mouse-x))])
+      ;; (send s-message set-label
+      ;;       (format "frame #: ~a" frame-num-str))
+      ;; (send s-message begin-edit-sequence #f)
+      ;; (send s-message erase)
+      ;; (send s-message insert
+      ;;       (format "frame #: ~a" frame-num-str))
+      ;; (send s-message end-edit-sequence)
       (send y-value-text begin-edit-sequence #f)
       (send y-value-text erase)
       (send y-value-text insert
@@ -228,6 +236,12 @@
 (append-editor-operation-menu-items m-edit #f)
 (append-editor-font-menu-items m-font)
 (send text set-max-undo-history 100)
+
+(define s-message (new message% [parent dialog]
+                       [label "xxx"]))
+
+(define e-message (new message% [parent dialog]
+                       [label "yyy"]))
 
 (define start-text (new text-field% [parent dialog]
                         [label "Start"]
