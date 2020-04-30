@@ -22,7 +22,7 @@
          [hours (~r (floor (/ timestamp 3600000)))])
     (string-append hours ":" minutes ":" seconds "." millis)))
 
-(define wav "KB0RE000.wav")
+(define wav "2018-01-29-session-1-loud.wav")
 (define s16max #x7fff)
 (define channels 2)
 

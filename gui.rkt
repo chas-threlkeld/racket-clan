@@ -1,6 +1,8 @@
 #lang racket/gui
 
 (require "util.rkt"
+         (only-in "io.rkt"
+                  file-text)
          (only-in rsound
                   play
                   rs-frames
@@ -156,7 +158,6 @@
 
     (define/override (on-event evt)
       (define evt-type (send evt get-event-type))
-      (println (send evt get-event-type))
       (set! cur-mouse-x (send evt get-x))
       (define client-width (get-client-width))
       (define-values (view-start-x _1) (get-view-start))
@@ -184,7 +185,8 @@
               [else "undefined"]))
       (match evt-type
         ['left-down (send s-message set-label (format "Start: ~a" cur-mouse-x))]
-        ['left-up (send e-message set-label (format "End: ~a" cur-mouse-x))])
+        ['left-up (send e-message set-label (format "End: ~a" cur-mouse-x))]
+        [else #f])
       ;; (send s-message set-label
       ;;       (format "frame #: ~a" frame-num-str))
       ;; (send s-message begin-edit-sequence #f)
@@ -213,6 +215,8 @@
                     [label "editor"]
                     [min-height 600]))
 
+(define clan-font (make-object font% 12 "CAfont" 'default))
+
 (define clan-text% (text:line-numbers-mixin
                     (text:basic-mixin
                      (editor:standard-style-list-mixin
@@ -220,12 +224,35 @@
 
 (define text (new clan-text%))
 
+(send (send editor get-dc) set-font clan-font)
+
 (send editor set-editor text)
 
 (define menu-bar (new menu-bar% [parent dialog]))
+(define m-file (new menu% [label "File"] [parent menu-bar]))
 (define m-edit (new menu% [label "Edit"] [parent menu-bar]))
 (define m-font (new menu% [label "Font"] [parent menu-bar]))
 (define m-insert (new menu% [label "Insert"] [parent menu-bar]))
+
+(new menu-item%
+     [label "Open"]
+     [parent m-file]
+     [callback (lambda (canvas button)
+                 (define file-name (finder:get-file))
+                 (if file-name
+                     (send text insert (call-with-input-file file-name
+                                         port->string #:mode 'text))
+                     #f))])
+
+(new menu-item%
+     [label "Save As"]
+     [parent m-file]
+     [callback (lambda (canvas button)
+                 (define file-name (finder:put-file))
+                 (call-with-output-file file-name
+                   (lambda (out)
+                     (write (send text get-text) out))
+                   #:exists 'replace))])
 
 (new menu-item%
      [label "↑ Shift to high pitch"]
@@ -237,26 +264,35 @@
 (append-editor-font-menu-items m-font)
 (send text set-max-undo-history 100)
 
-(define s-message (new message% [parent dialog]
-                       [label "xxx"]))
+(define h-pane (new horizontal-pane% [parent dialog]))
 
-(define e-message (new message% [parent dialog]
-                       [label "yyy"]))
+(define h-left (new horizontal-pane% [parent h-pane]))
 
-(define start-text (new text-field% [parent dialog]
+(define start-text (new text-field% [parent h-left]
                         [label "Start"]
                         [init-value "1000"]
                         [min-width 200]
                         [stretchable-width #f]))
 
-(define end-text (new text-field% [parent dialog]
+
+(define h-center (new horizontal-pane% [parent h-pane]
+                      [alignment (list 'center 'center)]))
+
+(define s-message (new message% [parent h-center]
+                       [label "xxx"]))
+
+
+(define e-message (new message% [parent h-center]
+                       [label "yyy"]))
+
+(define h-right (new horizontal-pane% [parent h-pane]
+                     [alignment (list 'left 'center)]))
+
+(define end-text (new text-field% [parent h-right]
                       [label "End"]
                       [init-value "5000"]
                       [min-width 200]
                       [stretchable-width #f]))
-
-(send start-text show #f)
-(send end-text show #f)
 
 (define sound-canvas
   (let* ([start (string->number (send (send start-text get-editor) get-text))]
@@ -303,19 +339,12 @@
   (send m set-label (~a (send text find-newline 'forward line-start))))
 
 
-(send text insert (string-append "*MAR:	You enjoyed yourself in America •0362_2332•\n"
-"*BOB:	Eh? •2632_2912•\n"
-"*MAR:	did you? •2812_3382•\n"
-"*BOB:	Oh I covered a nice trip, yes •33425_50325•\n"
-"*MAR:	Oh very good •50925_67525•\n"
-"*BOB:	saw Mary and Andrew and •67525_83325•\n"
-"*MAR:	Yes, you did •83325_87525•\n"
-"*BOB:	in fact the whole family was together for Mary's wedding  •87525_113325•\n"))
-
 (define redraw (new button% [parent dialog]
                     [label "Redraw"]
                     [callback (lambda (button event)
                                   (play-turn))]))
+
+(send text insert (call-with-input-file "2018-01-29-session-1.cha" port->string #:mode 'text))
 
 (send dialog show #t)
 
